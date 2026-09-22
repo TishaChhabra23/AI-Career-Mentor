@@ -7,11 +7,12 @@ export const getCookieOptions = () => {
   const isProduction = env.NODE_ENV === 'production';
   // Expiry matches JWT token expiry (7 days default)
   const maxAge = 7 * 24 * 60 * 60 * 1000; 
+  const sameSite: 'none' | 'lax' = isProduction ? 'none' : 'lax';
 
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: (isProduction ? 'none' : 'lax') as const,
+    sameSite,
     maxAge: maxAge,
     path: '/',
   };
