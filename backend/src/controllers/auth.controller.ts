@@ -26,6 +26,7 @@ export const register = asyncHandler(async (req: Request, res: Response, _next: 
         mobileNumber: user.mobileNumber,
         role: user.role,
       },
+      token,
     },
   });
 });
@@ -48,6 +49,7 @@ export const login = asyncHandler(async (req: Request, res: Response, _next: Nex
         mobileNumber: user.mobileNumber,
         role: user.role,
       },
+      token,
     },
   });
 });

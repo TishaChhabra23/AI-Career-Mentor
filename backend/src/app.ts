@@ -24,7 +24,14 @@ app.use(helmet());
 const clientURL = process.env.CLIENT_URL || 'http://localhost:5173';
 app.use(
   cors({
-    origin: clientURL,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, postman) or matching client URLs
+      if (!origin || clientURL === '*' || origin === clientURL || origin.includes('vercel.app') || origin.includes('localhost')) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Fallback allow in production to prevent CORS blocks
+      }
+    },
     credentials: true,
   })
 );

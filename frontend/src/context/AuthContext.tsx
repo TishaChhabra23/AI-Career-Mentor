@@ -49,6 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (data: Record<string, string>) => {
     const res = await authService.loginApi(data);
+    if (res.data.token) {
+      localStorage.setItem('token', res.data.token);
+    }
     setUser(res.data.user);
     // Fetch onboarding status
     try {
@@ -62,14 +65,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: Record<string, string>) => {
     const res = await authService.registerApi(data);
+    if (res.data.token) {
+      localStorage.setItem('token', res.data.token);
+    }
     setUser(res.data.user);
     setIsOnboarded(false); // Brand new user has not completed onboarding
   };
 
   const logout = async () => {
-    await authService.logoutApi();
-    setUser(null);
-    setIsOnboarded(false);
+    try {
+      await authService.logoutApi();
+    } finally {
+      localStorage.removeItem('token');
+      setUser(null);
+      setIsOnboarded(false);
+    }
   };
 
   const forgotPassword = async (email: string) => {

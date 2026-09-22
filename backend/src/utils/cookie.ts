@@ -11,7 +11,7 @@ export const getCookieOptions = () => {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'strict' as const,
+    sameSite: (isProduction ? 'none' : 'lax') as const,
     maxAge: maxAge,
     path: '/',
   };
