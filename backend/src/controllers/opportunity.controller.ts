@@ -43,7 +43,11 @@ const checkEligibility = async (userId: string, opportunityType: 'job' | 'intern
   
   // Resolve assessment definitions first to check results type matches
   const results = await AssessmentResult.find({ userId }).populate('assessmentId');
-  const hasCompletedTest = results.some((r: any) => r.assessmentId && r.assessmentId.type === expectedTestType);
+  const hasCompletedTest = results.some((r: any) => 
+    (r.assessmentId && r.assessmentId.type === expectedTestType) ||
+    (r.assessmentId && r.assessmentId.careerObjectives && r.assessmentId.careerObjectives.includes(expectedObjective)) ||
+    (r.assessmentId && r.assessmentId.isPersonalized)
+  );
 
   if (!hasCompletedTest) {
     throw new AppError('Access forbidden. Please complete your career readiness assessment first.', 403);

@@ -1,6 +1,6 @@
 export const getAssessmentTypeForUser = (educationLevel: string, careerObjective: string): string | null => {
   if (educationLevel === 'Class10') {
-    return null;
+    return 'class_10_stream';
   }
 
   if (educationLevel === 'Class11') {
@@ -14,7 +14,7 @@ export const getAssessmentTypeForUser = (educationLevel: string, careerObjective
   if (educationLevel === 'Diploma') {
     if (careerObjective === 'find_internship') return 'internship_readiness';
     if (careerObjective === 'find_job') return 'job_readiness';
-    return null;
+    return 'diploma_career';
   }
 
   if (educationLevel === 'UG') {
@@ -29,5 +29,5 @@ export const getAssessmentTypeForUser = (educationLevel: string, careerObjective
     return 'pg_career';
   }
 
-  return null;
+  return 'ug_career';
 };

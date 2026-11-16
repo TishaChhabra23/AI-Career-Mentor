@@ -9,6 +9,7 @@ import {
   saveProfileApi,
   getDashboardSummaryApi,
   getAvailableAssessmentApi,
+  regenerateAssessmentApi,
   startAssessmentApi,
   getAttemptApi,
   saveProgressApi,
@@ -2394,6 +2395,8 @@ export const Assessment: React.FC = () => {
   const navigate = useNavigate();
   const [phase, setPhase] = useState<'loading' | 'unavailable' | 'intro' | 'resume' | 'questions' | 'review' | 'submitting' | 'completed'>('loading');
   const [assessmentMeta, setAssessmentMeta] = useState<any>(null);
+  const [educationalContext, setEducationalContext] = useState<any>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -2416,6 +2419,7 @@ export const Assessment: React.FC = () => {
           return;
         }
         setAssessmentMeta(d.assessment);
+        setEducationalContext(d.educationalContext);
         if (d.attemptStatus === 'completed') {
           setExistingScore(d.overallScore);
           setPhase('completed');
@@ -2432,6 +2436,29 @@ export const Assessment: React.FC = () => {
     };
     load();
   }, []);
+
+  // Regenerate questions based on updated educational details
+  const handleRegenerate = async () => {
+    setIsRegenerating(true);
+    try {
+      await regenerateAssessmentApi();
+      toast.success('Generated fresh assessment questions customized to your educational background!');
+      const res = await getAvailableAssessmentApi();
+      const d = res.data;
+      if (d.available) {
+        setAssessmentMeta(d.assessment);
+        setEducationalContext(d.educationalContext);
+        setAttemptId(null);
+        setAnswers({});
+        setCurrentIdx(0);
+        setPhase('intro');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to regenerate questions');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   // Start or resume assessment
   const handleStart = async () => {
@@ -2582,9 +2609,37 @@ export const Assessment: React.FC = () => {
         <Toaster position="top-right" theme="dark" />
         <div style={{ maxWidth: '640px', margin: '40px auto', padding: '0 20px' }}>
           <Card style={{ padding: '40px', textAlign: 'center' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(123,44,191,0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 24px', color: 'var(--primary)' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(123,44,191,0.1)', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 20px', color: 'var(--primary)' }}>
               <BookOpen size={28} />
             </div>
+
+            {/* Educational Profile Alignment Banner */}
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: '16px'
+            }}>
+              <Badge color="purple" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', fontSize: '12px' }}>
+                <GraduationCap size={14} /> Level: {educationalContext?.educationLevel || assessmentMeta?.educationLevel || 'Academic'}
+              </Badge>
+              {(educationalContext?.stream || assessmentMeta?.stream) && (
+                <Badge color="blue" style={{ padding: '5px 12px', fontSize: '12px' }}>
+                  Stream: {educationalContext?.stream || assessmentMeta?.stream}
+                </Badge>
+              )}
+              {(educationalContext?.course || assessmentMeta?.course) && (
+                <Badge color="blue" style={{ padding: '5px 12px', fontSize: '12px' }}>
+                  Course: {educationalContext?.course || assessmentMeta?.course}
+                </Badge>
+              )}
+              <Badge color="purple" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', fontSize: '12px' }}>
+                <Sparkles size={13} /> {assessmentMeta?.generatedBy === 'ai' ? 'AI-Tailored' : 'Profile-Tailored'}
+              </Badge>
+            </div>
+
             <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>{assessmentMeta?.assessmentName}</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px', lineHeight: 1.5 }}>
               {assessmentMeta?.description}
@@ -2608,6 +2663,7 @@ export const Assessment: React.FC = () => {
             <div style={{ textAlign: 'left', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)', marginBottom: '28px' }}>
               <h4 style={{ fontSize: '13px', fontWeight: 700, marginBottom: '12px', color: 'var(--text-primary)' }}>Instructions</h4>
               <ul style={{ margin: 0, padding: '0 0 0 16px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+                <li>Questions are specifically generated based on your educational level and stream/course.</li>
                 <li>Your answers are saved automatically after each selection.</li>
                 <li>You can navigate between questions freely.</li>
                 <li>Time limit: <strong>{assessmentMeta?.duration} minutes</strong>. Assessment auto-submits when time expires.</li>
@@ -2621,6 +2677,18 @@ export const Assessment: React.FC = () => {
             ) : (
               <Button onClick={handleStart} style={{ width: '100%', padding: '14px' }}>Start Assessment</Button>
             )}
+
+            <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'center' }}>
+              <Button
+                variant="secondary"
+                onClick={handleRegenerate}
+                disabled={isRegenerating}
+                style={{ width: '100%', padding: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '13px' }}
+              >
+                <Sparkles size={15} />
+                {isRegenerating ? 'Regenerating Questions...' : 'Regenerate Questions for My Stream'}
+              </Button>
+            </div>
           </Card>
         </div>
       </AppLayout>
@@ -2788,7 +2856,14 @@ export const Assessment: React.FC = () => {
 
       {/* Question Card */}
       <Card style={{ padding: '32px', marginBottom: '20px' }}>
-        <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{currentSection}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            {currentSection}
+          </div>
+          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.03)', padding: '3px 10px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+            {educationalContext?.educationLevel || assessmentMeta?.educationLevel || 'Academic'} {educationalContext?.stream ? `• ${educationalContext.stream}` : ''} {educationalContext?.course ? `• ${educationalContext.course}` : ''}
+          </span>
+        </div>
         <h3 style={{ fontSize: '16px', fontWeight: 600, lineHeight: 1.5, marginBottom: '24px', color: 'var(--text-primary)' }}>
           {currentQ?.question}
         </h3>

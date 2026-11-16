@@ -75,9 +75,9 @@ export const scoreAssessmentAttempt = (
         // Map in mongoose has a .get() method, otherwise check direct property
         const optScores = q.scoringMetadata.optionScores;
         if (typeof (optScores as any).get === 'function') {
-          scoreVal = (optScores as any).get(ans.selectedOption) || 0;
+          scoreVal = (optScores as any).get(ans.selectedOption) || (optScores as any).get(ans.selectedOption.replace(/\./g, '')) || 0;
         } else {
-          scoreVal = (optScores as any)[ans.selectedOption] || 0;
+          scoreVal = (optScores as any)[ans.selectedOption] || (optScores as any)[ans.selectedOption.replace(/\./g, '')] || 0;
         }
       }
 

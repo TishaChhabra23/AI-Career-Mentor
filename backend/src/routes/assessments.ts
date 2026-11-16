@@ -8,6 +8,7 @@ const router = Router();
 router.use(protect);
 
 router.get('/available', assessmentController.getAvailableAssessment);
+router.post('/regenerate', assessmentController.regenerateAssessment);
 router.post('/start', assessmentController.startAssessment);
 router.get('/attempts/:attemptId', assessmentController.getAttempt);
 router.patch('/attempts/:attemptId/progress', assessmentController.saveProgress);

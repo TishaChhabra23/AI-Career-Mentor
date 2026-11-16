@@ -7,6 +7,7 @@ import { EducationDetails } from '../models/EducationDetails';
 import { StudentProfile } from '../models/StudentProfile';
 import { getAssessmentTypeForUser } from '../services/assessmentSelection.service';
 import { scoreAssessmentAttempt } from '../services/assessmentScoring.service';
+import { getOrGeneratePersonalizedAssessment } from '../services/assessmentGenerator.service';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 
 // Helper to check if an attempt's timer has expired
@@ -50,7 +51,7 @@ const autoFinalizeAttempt = async (attempt: any, assessment: any) => {
   return result;
 };
 
-// 1. Get Available Assessment metadata & status
+// 1. Get Available Assessment metadata & status (Tailored dynamically to user educational details)
 export const getAvailableAssessment = asyncHandler(async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
   const userId = req.user?.id;
   if (!userId) {
@@ -68,31 +69,8 @@ export const getAvailableAssessment = asyncHandler(async (req: Request, res: Res
     return;
   }
 
-  const careerObjective = profile?.careerObjective || 'explore_stream';
-  const type = getAssessmentTypeForUser(education.educationLevel, careerObjective);
-
-  if (!type) {
-    res.status(200).json({
-      success: true,
-      data: { 
-        available: false, 
-        reason: education.educationLevel === 'Class10' 
-          ? 'Your aptitude assessment will become available after you move to Class 11.' 
-          : 'Aptitude assessment is not required for your selected profile level.' 
-      }
-    });
-    return;
-  }
-
-  // Lookup assessment details matching active version
-  const assessment = await Assessment.findOne({ type, isActive: true });
-  if (!assessment) {
-    res.status(200).json({
-      success: true,
-      data: { available: false, reason: 'Assessment type is not set active or loaded.' }
-    });
-    return;
-  }
+  // Generate or fetch personalized assessment tailored to educational level and stream/course
+  let assessment = await getOrGeneratePersonalizedAssessment(userId, false);
 
   // Check attempt status
   const existingAttempt = await AssessmentProgress.findOne({
@@ -140,11 +118,58 @@ export const getAvailableAssessment = asyncHandler(async (req: Request, res: Res
         description: assessment.description,
         duration: assessment.duration,
         totalQuestions: assessment.totalQuestions,
-        totalSections: assessment.totalSections
+        totalSections: assessment.totalSections,
+        isPersonalized: assessment.isPersonalized ?? true,
+        generatedBy: assessment.generatedBy || 'curriculum',
+        stream: assessment.stream || education.stream || null,
+        course: assessment.course || education.course || null,
+        educationLevel: education.educationLevel
+      },
+      educationalContext: {
+        educationLevel: education.educationLevel,
+        stream: education.stream || null,
+        course: education.course || null,
+        schoolCollege: education.schoolCollege || null,
+        boardUniversity: education.boardUniversity || null,
+        currentClassSemester: education.currentClassSemester || null,
+        percentageCGPA: education.percentageCGPA || null,
+        careerObjective: profile?.careerObjective || null,
+        targetCareer: profile?.careerGoal || null,
+        favoriteSubjects: profile?.favoriteSubjects || []
       },
       attemptStatus,
       attemptId,
       overallScore
+    }
+  });
+});
+
+// 1.B. Regenerate personalized assessment questions based on latest education details
+export const regenerateAssessment = asyncHandler(async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new AppError('Not authenticated', 401);
+  }
+
+  const assessment = await getOrGeneratePersonalizedAssessment(userId, true);
+
+  res.status(200).json({
+    success: true,
+    message: 'Assessment questions successfully regenerated based on your educational details and level.',
+    data: {
+      assessment: {
+        _id: assessment._id,
+        assessmentName: assessment.assessmentName,
+        type: assessment.type,
+        description: assessment.description,
+        duration: assessment.duration,
+        totalQuestions: assessment.totalQuestions,
+        totalSections: assessment.totalSections,
+        isPersonalized: assessment.isPersonalized ?? true,
+        generatedBy: assessment.generatedBy || 'curriculum',
+        stream: assessment.stream || null,
+        course: assessment.course || null
+      }
     }
   });
 });

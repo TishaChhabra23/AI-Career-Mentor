@@ -38,7 +38,7 @@ const configByType = {
     promptBuilder: getStreamRecommendationPrompt,
     schema: streamRecommendationSchema,
     promptVersion: 'stream-v1',
-    allowedLevels: ['Class11']
+    allowedLevels: ['Class10', 'Class11']
   },
   degree_recommendation: {
     promptBuilder: getDegreeRecommendationPrompt,
@@ -105,7 +105,7 @@ export const generateRecommendation = async (
   // Enforce primary recommendation dependency for roadmaps
   if (type === 'career_roadmap' || type === 'learning_roadmap') {
     let primaryType: RecommendationType | null = null;
-    if (context.educationLevel === 'Class11') {
+    if (context.educationLevel === 'Class10' || context.educationLevel === 'Class11') {
       primaryType = 'stream_recommendation';
     } else if (context.educationLevel === 'Class12') {
       primaryType = 'degree_recommendation';

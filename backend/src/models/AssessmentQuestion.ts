@@ -30,7 +30,7 @@ const assessmentQuestionSchema = new Schema<IAssessmentQuestion>({
   options: [{ type: String, required: true }],
   correctAnswer: { type: String },
   scoringMetadata: {
-    optionScores: { type: Map, of: Number }
+    optionScores: { type: Schema.Types.Mixed }
   },
   weightage: { type: Number, required: true, default: 1 },
   order: { type: Number, required: true },

@@ -92,6 +92,11 @@ export const getAvailableAssessmentApi = async (): Promise<any> => {
   return response.data;
 };
 
+export const regenerateAssessmentApi = async (): Promise<any> => {
+  const response = await api.post('/assessments/regenerate');
+  return response.data;
+};
+
 export const startAssessmentApi = async (assessmentId: string): Promise<any> => {
   const response = await api.post('/assessments/start', { assessmentId });
   return response.data;

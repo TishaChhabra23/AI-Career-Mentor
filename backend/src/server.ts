@@ -12,7 +12,7 @@ const startServer = async () => {
   await connectDB();
 
   // Start listening
-  server = app.listen(PORT, () => {
+  server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Express server started and listening on port ${PORT} in ${env.NODE_ENV} mode`);
   });
 
