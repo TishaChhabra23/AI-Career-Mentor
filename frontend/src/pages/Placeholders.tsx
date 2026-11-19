@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { fetchHealth, type HealthResponse, api } from '../services/api';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -92,6 +92,15 @@ const boardOptions = [
   'VIT University', 'LPU', 'Chandigarh University',
   'Christ University', 'Symbiosis University', 'Jadavpur University',
   'BHU', 'AMU', 'JMI', 'JNU', 'IIT', 'NIT', 'IIIT',
+];
+
+const schoolBoardOptions = [
+  'CBSE', 'ICSE', 'ISC', 'State Board',
+  'IB (International Baccalaureate)', 'Cambridge (IGCSE)',
+  'NIOS', 'UP Board', 'Maharashtra Board', 'Karnataka Board (PUE)',
+  'Tamil Nadu Board', 'Kerala Board', 'West Bengal Board',
+  'Rajasthan Board', 'Bihar Board', 'MP Board', 'Gujarat Board',
+  'AP Board', 'Telangana Board', 'Punjab Board', 'Other State Board'
 ];
 
 const courseOptions = [
@@ -962,14 +971,54 @@ export const Education: React.FC = () => {
     { value: 'PG', label: 'Postgraduate Student (PG)' },
   ];
 
-  const objectives = [
-    { value: 'explore_stream', label: 'Explore Streams', desc: 'Discover subjects and streams matching interests (Class 10/11)', icon: BookOpen },
-    { value: 'explore_degree', label: 'Explore Degrees', desc: 'Identify optimal undergraduate pathways (Class 12)', icon: GraduationCap },
-    { value: 'explore_career', label: 'Explore Careers', desc: 'Research future career roles and skill gaps', icon: Sparkles },
-    { value: 'find_internship', label: 'Find Internship', desc: 'Prepare and apply for active internships', icon: Award },
-    { value: 'find_job', label: 'Find Job', desc: 'Get matched to employment opportunities', icon: Briefcase },
-    { value: 'higher_studies', label: 'Plan Higher Studies', desc: 'Research masters or higher qualification paths', icon: TrendingUp },
-  ];
+  const handleLevelChange = (selectedLevel: string) => {
+    setLevel(selectedLevel);
+    // Clear and set grade-appropriate defaults
+    if (selectedLevel === 'Class10') {
+      setCourse('');
+      setStream('');
+      setCurrentClassSemester('Class 10');
+      setObjective('explore_stream');
+    } else if (selectedLevel === 'Class11' || selectedLevel === 'Class12') {
+      setCourse('');
+      setCurrentClassSemester(selectedLevel === 'Class11' ? 'Class 11' : 'Class 12');
+      if (objective === 'find_internship' || objective === 'find_job' || objective === 'explore_stream') {
+        setObjective('explore_degree');
+      }
+    } else if (selectedLevel === 'Diploma') {
+      setStream('');
+      if (objective === 'explore_stream' || objective === 'explore_degree') {
+        setObjective('find_internship');
+      }
+    } else {
+      setStream('');
+      if (objective === 'explore_stream' || objective === 'explore_degree') {
+        setObjective('find_internship');
+      }
+    }
+  };
+
+  const filteredObjectives = useMemo(() => {
+    if (level === 'Class10') {
+      return [
+        { value: 'explore_stream', label: 'Explore Streams', desc: 'Discover Science, Commerce, or Arts streams matching your strengths', icon: BookOpen },
+        { value: 'explore_career', label: 'Explore Careers', desc: 'Discover future career possibilities, roles, and emerging industries', icon: Sparkles },
+      ];
+    }
+    if (level === 'Class11' || level === 'Class12') {
+      return [
+        { value: 'explore_degree', label: 'Explore Degrees & Colleges', desc: 'Identify optimal undergraduate pathways, entrance exams & top colleges', icon: GraduationCap },
+        { value: 'higher_studies', label: 'Entrance Exams & Higher Studies', desc: 'Prepare for competitive entrance exams (JEE, NEET, CUET, SAT)', icon: TrendingUp },
+        { value: 'explore_career', label: 'Explore Career Opportunities', desc: 'Learn what industry roles demand and map your roadmap', icon: Sparkles },
+      ];
+    }
+    return [
+      { value: 'find_internship', label: 'Find Internship', desc: 'Build resume, gain industry experience, and apply for verified roles', icon: Award },
+      { value: 'find_job', label: 'Campus Placements & Jobs', desc: 'Match with hiring companies, practice technical assessments, and get hired', icon: Briefcase },
+      { value: 'higher_studies', label: 'Plan Higher Studies', desc: 'Research Masters, MBA, or global university admissions', icon: TrendingUp },
+      { value: 'explore_career', label: 'Career Roadmaps & Skills', desc: 'Identify skill gaps and follow step-by-step learning roadmaps', icon: Sparkles },
+    ];
+  }, [level]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -1103,95 +1152,205 @@ export const Education: React.FC = () => {
               label="What is your current education level?" 
               options={levels} 
               value={level}
-              onChange={(e) => setLevel(e.target.value)} 
+              onChange={(e) => handleLevelChange(e.target.value)} 
             />
 
-            {/* Dynamic Academic inputs */}
+            {/* Dynamic Grade-Adaptive Academic Details */}
             <div style={{ margin: '24px 0', padding: '20px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)' }}>
-              <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)' }}>Academic Details</h4>
+              <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)' }}>
+                {level === 'Class10' ? 'School Details (Class 10)' : (level === 'Class11' || level === 'Class12') ? `School Details (${level === 'Class11' ? 'Class 11' : 'Class 12'})` : level === 'Diploma' ? 'Polytechnic Diploma Details' : 'College / Degree Details'}
+              </h4>
               
-              <Input 
-                id="schoolCollege" 
-                label="School / College Name" 
-                placeholder="e.g. Stanford University"
-                value={schoolCollege}
-                onChange={(e) => setSchoolCollege(e.target.value)}
-              />
-
-              <SearchableSelect 
-                id="boardUniversity" 
-                label="Board / University" 
-                placeholder="e.g. CBSE / State Board"
-                value={boardUniversity}
-                onChange={(val) => setBoardUniversity(val)}
-                options={boardOptions}
-              />
-
+              {/* Class 10 School Student Fields */}
               {level === 'Class10' && (
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
-                  No stream selection is required for Class 10.
-                </p>
+                <>
+                  <Input 
+                    id="schoolCollege" 
+                    label="School Name" 
+                    placeholder="e.g. Delhi Public School / St. Xavier's High School"
+                    required
+                    value={schoolCollege}
+                    onChange={(e) => setSchoolCollege(e.target.value)}
+                  />
+
+                  <SearchableSelect 
+                    id="boardUniversity" 
+                    label="School Board" 
+                    placeholder="e.g. CBSE / ICSE / State Board"
+                    required
+                    value={boardUniversity}
+                    onChange={(val) => setBoardUniversity(val)}
+                    options={schoolBoardOptions}
+                  />
+
+                  <div className="form-group">
+                    <label className="label">Current Grade / Class</label>
+                    <input className="input" value="Class 10 (10th Standard)" readOnly style={{ opacity: 0.85, cursor: 'not-allowed' }} />
+                  </div>
+
+                  <Input 
+                    id="percentageCGPA" 
+                    label="9th Grade / Latest Exam Marks (%)" 
+                    placeholder="e.g. 85%" 
+                    value={percentageCGPA}
+                    onChange={(e) => setPercentageCGPA(e.target.value)}
+                  />
+
+                  <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(123, 44, 191, 0.08)', border: '1px solid rgba(123, 44, 191, 0.25)', color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.5, marginTop: '12px' }}>
+                    💡 <strong>Class 10 Note:</strong> No stream selection or degree is required. You will be matched with Stream &amp; Career Discovery assessments to choose between Science, Commerce, and Arts.
+                  </div>
+                </>
               )}
 
+              {/* Class 11 and Class 12 School Student Fields */}
               {(level === 'Class11' || level === 'Class12') && (
-                <SearchableSelect 
-                  id="stream" 
-                  label="Academic Stream (Science / Commerce / Arts)" 
-                  placeholder="e.g. Science"
-                  required
-                  value={stream}
-                  onChange={(val) => setStream(val)}
-                  options={streamOptions}
-                />
+                <>
+                  <Input 
+                    id="schoolCollege" 
+                    label="School / Junior College Name" 
+                    placeholder="e.g. Delhi Public School / Ryan International"
+                    required
+                    value={schoolCollege}
+                    onChange={(e) => setSchoolCollege(e.target.value)}
+                  />
+
+                  <SearchableSelect 
+                    id="boardUniversity" 
+                    label="School Board" 
+                    placeholder="e.g. CBSE / ISC / State Board"
+                    required
+                    value={boardUniversity}
+                    onChange={(val) => setBoardUniversity(val)}
+                    options={schoolBoardOptions}
+                  />
+
+                  <SearchableSelect 
+                    id="stream" 
+                    label="Academic Stream" 
+                    placeholder="Select Stream"
+                    required
+                    value={stream}
+                    onChange={(val) => setStream(val)}
+                    options={streamOptions}
+                  />
+
+                  <div className="form-group">
+                    <label className="label">Current Grade</label>
+                    <input className="input" value={level === 'Class11' ? 'Class 11 (11th Standard)' : 'Class 12 (12th Standard)'} readOnly style={{ opacity: 0.85, cursor: 'not-allowed' }} />
+                  </div>
+
+                  <Input 
+                    id="percentageCGPA" 
+                    label="Class 10 / Board Exam Marks (%)" 
+                    placeholder="e.g. 88%" 
+                    value={percentageCGPA}
+                    onChange={(e) => setPercentageCGPA(e.target.value)}
+                  />
+
+                  <div style={{ padding: '12px 14px', borderRadius: '8px', background: 'rgba(123, 44, 191, 0.08)', border: '1px solid rgba(123, 44, 191, 0.25)', color: 'var(--text-secondary)', fontSize: '13px', lineHeight: 1.5, marginTop: '12px' }}>
+                    🎯 <strong>Senior School Guidance:</strong> You will receive undergraduate degree recommendations (B.Tech, MBBS, B.Com, BA, etc.), top college options, and entrance exam preparation paths.
+                  </div>
+                </>
               )}
 
+              {/* Diploma Student Fields */}
               {level === 'Diploma' && (
                 <>
+                  <Input 
+                    id="schoolCollege" 
+                    label="Polytechnic / Institute Name" 
+                    placeholder="e.g. Government Polytechnic"
+                    required
+                    value={schoolCollege}
+                    onChange={(e) => setSchoolCollege(e.target.value)}
+                  />
+
+                  <SearchableSelect 
+                    id="boardUniversity" 
+                    label="Technical Board / University" 
+                    placeholder="e.g. State Board of Technical Education"
+                    required
+                    value={boardUniversity}
+                    onChange={(val) => setBoardUniversity(val)}
+                    options={boardOptions}
+                  />
+
                   <SearchableSelect 
                     id="course" 
-                    label="Diploma Course" 
+                    label="Diploma Course / Branch" 
                     placeholder="e.g. Diploma in Computer Engineering" 
                     required
                     value={course}
                     onChange={(val) => setCourse(val)}
                     options={courseOptions.filter(c => c.startsWith('Diploma'))}
                   />
+
                   <SearchableSelect 
                     id="currentClassSemester" 
-                    label="Current Year / Sem" 
+                    label="Current Year / Semester" 
                     placeholder="e.g. 3rd Year" 
                     required
                     value={currentClassSemester}
                     onChange={(val) => setCurrentClassSemester(val)}
                     options={semesterYearOptions}
                   />
+
+                  <Input 
+                    id="percentageCGPA" 
+                    label="Current Marks / Percentage / CGPA" 
+                    placeholder="e.g. 8.2 or 82%" 
+                    value={percentageCGPA}
+                    onChange={(e) => setPercentageCGPA(e.target.value)}
+                  />
                 </>
               )}
 
+              {/* Undergraduate (UG) and Postgraduate (PG) College Student Fields */}
               {(level === 'UG' || level === 'PG') && (
                 <>
+                  <Input 
+                    id="schoolCollege" 
+                    label="College / University Name" 
+                    placeholder="e.g. Delhi University / IIT Bombay / Stanford University"
+                    required
+                    value={schoolCollege}
+                    onChange={(e) => setSchoolCollege(e.target.value)}
+                  />
+
+                  <SearchableSelect 
+                    id="boardUniversity" 
+                    label="Board / University" 
+                    placeholder="e.g. University of Delhi / Mumbai University / VTU"
+                    required
+                    value={boardUniversity}
+                    onChange={(val) => setBoardUniversity(val)}
+                    options={boardOptions}
+                  />
+
                   <SearchableSelect 
                     id="course" 
-                    label="Degree Course" 
-                    placeholder="e.g. B.Tech Computer Science" 
+                    label={level === 'PG' ? 'Postgraduate Degree & Branch' : 'Degree Course (UG)'} 
+                    placeholder={level === 'PG' ? 'e.g. MCA / MBA / M.Tech' : 'e.g. B.Tech Computer Science / BCA / B.Com'} 
                     required
                     value={course}
                     onChange={(val) => setCourse(val)}
-                    options={courseOptions}
+                    options={level === 'PG' ? courseOptions.filter(c => c.startsWith('M.') || c.startsWith('MA') || c.startsWith('MS') || c === 'MCA' || c === 'MBA' || c === 'MPH' || c === 'LLM') : courseOptions.filter(c => !c.startsWith('Diploma') && !c.startsWith('M.') && !c.startsWith('MA ') && !c.startsWith('MS ') && c !== 'MCA' && c !== 'MBA' && c !== 'MPH' && c !== 'LLM')}
                   />
+
                   <SearchableSelect 
                     id="currentClassSemester" 
                     label="Current Semester / Year" 
-                    placeholder="e.g. 5th Semester" 
+                    placeholder="e.g. 5th Semester / 3rd Year" 
                     required
                     value={currentClassSemester}
                     onChange={(val) => setCurrentClassSemester(val)}
                     options={semesterYearOptions}
                   />
+
                   <Input 
                     id="percentageCGPA" 
                     label="Current CGPA / Percentage" 
-                    placeholder="e.g. 8.5 or 85%" 
+                    placeholder="e.g. 8.5 CGPA or 85%" 
                     required
                     value={percentageCGPA}
                     onChange={(e) => setPercentageCGPA(e.target.value)}
@@ -1200,11 +1359,11 @@ export const Education: React.FC = () => {
               )}
             </div>
 
-            {/* Step 2: Objectives Selection Cards */}
+            {/* Step 2: Objectives Selection Cards (Filtered Dynamically by Education Level) */}
             <div style={{ marginBottom: '32px' }}>
               <label className="label">What is your primary objective?</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px' }}>
-                {objectives.map((obj) => {
+                {filteredObjectives.map((obj) => {
                   const Icon = obj.icon;
                   const isSelected = objective === obj.value;
                   return (
@@ -2049,48 +2208,111 @@ export const ProfileManagement: React.FC = () => {
                       id="educationLevel"
                       className="select"
                       value={educationLevel}
-                      onChange={(e) => setEducationLevel(e.target.value)}
+                      onChange={(e) => {
+                        const newLvl = e.target.value;
+                        setEducationLevel(newLvl);
+                        if (newLvl === 'Class10') {
+                          setCourse('');
+                          setStream('');
+                          setCurrentClassSemester('Class 10');
+                        } else if (newLvl === 'Class11' || newLvl === 'Class12') {
+                          setCourse('');
+                          setCurrentClassSemester(newLvl === 'Class11' ? 'Class 11' : 'Class 12');
+                        }
+                      }}
                     >
                       <option value="Class10">Class 10 Student</option>
                       <option value="Class11">Class 11 Student</option>
                       <option value="Class12">Class 12 Student</option>
                       <option value="Diploma">Diploma Student</option>
+                      <option value="UG">Undergraduate (UG)</option>
                       <option value="PG">Postgraduate (PG)</option>
                     </select>
                   </div>
-                  <Input id="schoolCollege" label="School / College" value={schoolCollege} onChange={(e) => setSchoolCollege(e.target.value)} />
+
+                  {/* School / College Name */}
+                  <Input 
+                    id="schoolCollege" 
+                    label={educationLevel === 'Class10' ? 'School Name' : (educationLevel === 'Class11' || educationLevel === 'Class12') ? 'School / Junior College' : educationLevel === 'Diploma' ? 'Polytechnic / Institute' : 'College / University'} 
+                    placeholder={educationLevel === 'Class10' || educationLevel === 'Class11' || educationLevel === 'Class12' ? 'e.g. Delhi Public School' : 'e.g. Stanford University'}
+                    value={schoolCollege} 
+                    onChange={(e) => setSchoolCollege(e.target.value)} 
+                  />
+
+                  {/* Board / University */}
                   <SearchableSelect 
                     id="boardUniversity" 
-                    label="Board / University" 
+                    label={educationLevel === 'Class10' || educationLevel === 'Class11' || educationLevel === 'Class12' ? 'School Board' : 'Board / University'} 
+                    placeholder={educationLevel === 'Class10' || educationLevel === 'Class11' || educationLevel === 'Class12' ? 'e.g. CBSE / ICSE / State Board' : 'e.g. University of Delhi'}
                     value={boardUniversity} 
                     onChange={(val) => setBoardUniversity(val)} 
-                    options={boardOptions}
+                    options={educationLevel === 'Class10' || educationLevel === 'Class11' || educationLevel === 'Class12' ? schoolBoardOptions : boardOptions}
                   />
-                  <SearchableSelect 
-                    id="currentClassSemester" 
-                    label="Current Class / Semester" 
-                    placeholder="e.g. 3rd Year / 6th Sem" 
-                    value={currentClassSemester} 
-                    onChange={(val) => setCurrentClassSemester(val)} 
-                    options={semesterYearOptions}
+
+                  {/* Class 11 & 12: Stream */}
+                  {(educationLevel === 'Class11' || educationLevel === 'Class12') && (
+                    <SearchableSelect 
+                      id="stream" 
+                      label="Academic Stream" 
+                      placeholder="e.g. Science (PCM) / Commerce" 
+                      value={stream} 
+                      onChange={(val) => setStream(val)} 
+                      options={['Science (PCM)', 'Science (PCB)', 'Commerce', 'Arts / Humanities', 'Vocational']}
+                    />
+                  )}
+
+                  {/* Diploma: Diploma Course & Year */}
+                  {educationLevel === 'Diploma' && (
+                    <>
+                      <SearchableSelect 
+                        id="course" 
+                        label="Diploma Course" 
+                        placeholder="e.g. Diploma in Computer Engineering" 
+                        value={course} 
+                        onChange={(val) => setCourse(val)} 
+                        options={courseOptions.filter(c => c.startsWith('Diploma'))}
+                      />
+                      <SearchableSelect 
+                        id="currentClassSemester" 
+                        label="Current Year / Semester" 
+                        placeholder="e.g. 2nd Year" 
+                        value={currentClassSemester} 
+                        onChange={(val) => setCurrentClassSemester(val)} 
+                        options={semesterYearOptions}
+                      />
+                    </>
+                  )}
+
+                  {/* College UG & PG: Degree Course & Semester */}
+                  {(educationLevel === 'UG' || educationLevel === 'PG') && (
+                    <>
+                      <SearchableSelect 
+                        id="course" 
+                        label={educationLevel === 'PG' ? 'Postgraduate Degree' : 'Degree Course'} 
+                        placeholder="e.g. B.Tech Computer Science" 
+                        value={course} 
+                        onChange={(val) => setCourse(val)} 
+                        options={educationLevel === 'PG' ? courseOptions.filter(c => c.startsWith('M.') || c.startsWith('MA') || c.startsWith('MS') || c === 'MCA' || c === 'MBA' || c === 'MPH' || c === 'LLM') : courseOptions.filter(c => !c.startsWith('Diploma') && !c.startsWith('M.') && !c.startsWith('MA ') && !c.startsWith('MS ') && c !== 'MCA' && c !== 'MBA' && c !== 'MPH' && c !== 'LLM')}
+                      />
+                      <SearchableSelect 
+                        id="currentClassSemester" 
+                        label="Current Semester / Year" 
+                        placeholder="e.g. 5th Semester / 3rd Year" 
+                        value={currentClassSemester} 
+                        onChange={(val) => setCurrentClassSemester(val)} 
+                        options={semesterYearOptions}
+                      />
+                    </>
+                  )}
+
+                  {/* Grades */}
+                  <Input 
+                    id="percentageCGPA" 
+                    label={educationLevel === 'Class10' ? '9th / Previous Grade Marks (%)' : (educationLevel === 'Class11' || educationLevel === 'Class12') ? 'Class 10 / Board Exam Marks (%)' : 'Grades (CGPA or %)'} 
+                    placeholder="e.g. 85% or 8.5" 
+                    value={percentageCGPA} 
+                    onChange={(e) => setPercentageCGPA(e.target.value)} 
                   />
-                  <SearchableSelect 
-                    id="course" 
-                    label="Course / Degree Name" 
-                    placeholder="e.g. B.Tech Computer Science" 
-                    value={course} 
-                    onChange={(val) => setCourse(val)} 
-                    options={courseOptions}
-                  />
-                  <SearchableSelect 
-                    id="stream" 
-                    label="Academic Stream" 
-                    placeholder="e.g. Science / Commerce" 
-                    value={stream} 
-                    onChange={(val) => setStream(val)} 
-                    options={streamOptions}
-                  />
-                  <Input id="percentageCGPA" label="Grades (CGPA or %)" placeholder="e.g. 8.5" value={percentageCGPA} onChange={(e) => setPercentageCGPA(e.target.value)} />
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -2099,27 +2321,44 @@ export const ProfileManagement: React.FC = () => {
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>{mapEduLevel[educationLevel] || educationLevel || 'Student'}</span>
                   </div>
                   <div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>School / College</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      {educationLevel === 'Class10' || educationLevel === 'Class11' || educationLevel === 'Class12' ? 'School Name' : 'College / Institution'}
+                    </span>
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>{schoolCollege || 'Not Set'}</span>
                   </div>
                   <div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Board / University</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      {educationLevel === 'Class10' || educationLevel === 'Class11' || educationLevel === 'Class12' ? 'School Board' : 'Board / University'}
+                    </span>
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>{boardUniversity || 'Not Set'}</span>
                   </div>
+                  
+                  {/* Show Stream only for Class 11/12 */}
+                  {(educationLevel === 'Class11' || educationLevel === 'Class12') && (
+                    <div>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Academic Stream</span>
+                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{stream || 'Not Set'}</span>
+                    </div>
+                  )}
+
+                  {/* Show Course only for Diploma/UG/PG */}
+                  {(educationLevel === 'Diploma' || educationLevel === 'UG' || educationLevel === 'PG') && (
+                    <div>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Course / Degree</span>
+                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{course || 'Not Set'}</span>
+                    </div>
+                  )}
+
+                  {/* Show Class/Semester only for Diploma/UG/PG */}
+                  {(educationLevel === 'Diploma' || educationLevel === 'UG' || educationLevel === 'PG') && (
+                    <div>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Year / Semester</span>
+                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{currentClassSemester || 'Not Set'}</span>
+                    </div>
+                  )}
+
                   <div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Class / Semester</span>
-                    <span style={{ fontSize: '14px', fontWeight: 600 }}>{currentClassSemester || 'Not Set'}</span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Course / Degree</span>
-                    <span style={{ fontSize: '14px', fontWeight: 600 }}>{course || 'Not Set'}</span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Stream</span>
-                    <span style={{ fontSize: '14px', fontWeight: 600 }}>{stream || 'Not Set'}</span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Grades</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Grades / Marks</span>
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>{percentageCGPA ? `${percentageCGPA}` : 'Not Set'}</span>
                   </div>
                 </div>
@@ -2158,14 +2397,16 @@ export const ProfileManagement: React.FC = () => {
                     onChange={(val) => setCareerGoal(val)} 
                     options={careerGoalOptions}
                   />
-                  <SearchableSelect 
-                    id="preferredDegree" 
-                    label="Preferred Degree / Studies" 
-                    placeholder="e.g. Master of Science" 
-                    value={preferredDegree} 
-                    onChange={(val) => setPreferredDegree(val)} 
-                    options={degreeOptions}
-                  />
+                  {(educationLevel === 'Class11' || educationLevel === 'Class12' || educationLevel === 'UG' || educationLevel === 'PG') && (
+                    <SearchableSelect 
+                      id="preferredDegree" 
+                      label={educationLevel === 'Class11' || educationLevel === 'Class12' ? 'Target College Degree' : 'Preferred Postgrad / Degree Studies'} 
+                      placeholder="e.g. B.Tech Computer Science" 
+                      value={preferredDegree} 
+                      onChange={(val) => setPreferredDegree(val)} 
+                      options={degreeOptions}
+                    />
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -2177,18 +2418,22 @@ export const ProfileManagement: React.FC = () => {
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Future Career Goal</span>
                     <span style={{ fontSize: '14px', fontWeight: 600 }}>{careerGoal || 'Not Set'}</span>
                   </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Preferred Postgrad / Degree Studies</span>
-                    <span style={{ fontSize: '14px', fontWeight: 600 }}>{preferredDegree || 'Not Set'}</span>
-                  </div>
+                  {(educationLevel === 'Class11' || educationLevel === 'Class12' || educationLevel === 'UG' || educationLevel === 'PG') && (
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                        {educationLevel === 'Class11' || educationLevel === 'Class12' ? 'Target College Degree' : 'Preferred Degree Studies'}
+                      </span>
+                      <span style={{ fontSize: '14px', fontWeight: 600 }}>{preferredDegree || 'Not Set'}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </Card>
 
-            {/* Section 4: Student profile parameters */}
+            {/* Section 4: Student profile parameters (Grade-Adaptive) */}
             <Card style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '12px', margin: 0 }}>
-                Student Profile details
+                {educationLevel === 'Class10' || educationLevel === 'Class11' || educationLevel === 'Class12' ? 'Academic & Extracurricular Profile' : 'Technical & Professional Profile'}
               </h3>
 
               {isEditing ? (
@@ -2196,28 +2441,41 @@ export const ProfileManagement: React.FC = () => {
                   <MultiSearchableSelect 
                     id="interests" 
                     label="Academic / Career Interests" 
-                    placeholder="e.g. Cloud, Web, AI" 
+                    placeholder="e.g. Cloud, Web, AI, Mathematics" 
                     value={interests} 
                     onChange={(val) => setInterests(val)} 
                     options={interestOptions}
                   />
-                  <MultiSearchableSelect 
-                    id="skills" 
-                    label="Technical Skills / Tools" 
-                    placeholder="e.g. Javascript, SQL, Git" 
-                    value={skills} 
-                    onChange={(val) => setSkills(val)} 
-                    options={skillOptions}
-                  />
-                  <Textarea id="favoriteSubjects" label="Favorite Core Subjects" placeholder="e.g. Calculus, Database Management (separated by commas)" value={favoriteSubjects} onChange={(e) => setFavoriteSubjects(e.target.value)} />
-                  <Textarea id="strengths" label="Your Strengths" placeholder="e.g. Logic, Problem Solving (separated by commas)" value={strengths} onChange={(e) => setStrengths(e.target.value)} />
-                  <Textarea id="hobbies" label="Hobbies" placeholder="e.g. Chess, Reading (separated by commas)" value={hobbies} onChange={(e) => setHobbies(e.target.value)} />
-                  <Textarea id="projects" label="Recent Project Titles" placeholder="e.g. E-Commerce API, Chat Application (separated by commas)" value={projects} onChange={(e) => setProjects(e.target.value)} />
-                  <Textarea id="certifications" label="Professional Certifications" placeholder="e.g. AWS Cloud Practitioner (separated by commas)" value={certifications} onChange={(e) => setCertifications(e.target.value)} />
+
+                  {/* Show Technical Skills only for College / Diploma students */}
+                  {(educationLevel === 'Diploma' || educationLevel === 'UG' || educationLevel === 'PG') && (
+                    <MultiSearchableSelect 
+                      id="skills" 
+                      label="Technical Skills / Tools" 
+                      placeholder="e.g. Javascript, SQL, Git" 
+                      value={skills} 
+                      onChange={(val) => setSkills(val)} 
+                      options={skillOptions}
+                    />
+                  )}
+
+                  <Textarea id="favoriteSubjects" label="Favorite Subjects" placeholder="e.g. Mathematics, Physics, Computer Science (separated by commas)" value={favoriteSubjects} onChange={(e) => setFavoriteSubjects(e.target.value)} />
+                  <Textarea id="strengths" label="Key Strengths" placeholder="e.g. Logic, Problem Solving, Analytical Thinking (separated by commas)" value={strengths} onChange={(e) => setStrengths(e.target.value)} />
+                  <Textarea id="hobbies" label="Hobbies & Extracurriculars" placeholder="e.g. Chess, Reading, Coding, Sports (separated by commas)" value={hobbies} onChange={(e) => setHobbies(e.target.value)} />
+                  
+                  {/* Show Projects, Certifications, Experience only for College / Diploma students */}
+                  {(educationLevel === 'Diploma' || educationLevel === 'UG' || educationLevel === 'PG') && (
+                    <>
+                      <Textarea id="projects" label="Recent Project Titles" placeholder="e.g. E-Commerce API, Chat Application (separated by commas)" value={projects} onChange={(e) => setProjects(e.target.value)} />
+                      <Textarea id="certifications" label="Professional Certifications" placeholder="e.g. AWS Cloud Practitioner (separated by commas)" value={certifications} onChange={(e) => setCertifications(e.target.value)} />
+                    </>
+                  )}
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                    <Input id="learningStyle" label="Preferred Learning Style" placeholder="e.g. Practical" value={learningStyle} onChange={(e) => setLearningStyle(e.target.value)} />
-                    <Input id="experienceText" label="Professional Experience" placeholder="e.g. Intern at Google, Freelancer at Upwork (separated by commas)" value={experienceText} onChange={(e) => setExperienceText(e.target.value)} />
+                    <Input id="learningStyle" label="Preferred Learning Style" placeholder="e.g. Practical / Visual" value={learningStyle} onChange={(e) => setLearningStyle(e.target.value)} />
+                    {(educationLevel === 'Diploma' || educationLevel === 'UG' || educationLevel === 'PG') && (
+                      <Input id="experienceText" label="Professional Experience" placeholder="e.g. Intern at Google, Freelancer (separated by commas)" value={experienceText} onChange={(e) => setExperienceText(e.target.value)} />
+                    )}
                   </div>
                 </div>
               ) : (
@@ -2226,10 +2484,14 @@ export const ProfileManagement: React.FC = () => {
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Interests</span>
                     <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{interests || 'Not Set'}</span>
                   </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Technical Skills</span>
-                    <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{skills || 'Not Set'}</span>
-                  </div>
+                  
+                  {(educationLevel === 'Diploma' || educationLevel === 'UG' || educationLevel === 'PG') && (
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Technical Skills</span>
+                      <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{skills || 'Not Set'}</span>
+                    </div>
+                  )}
+
                   <div>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Favorite Subjects</span>
                     <span style={{ fontSize: '14px' }}>{favoriteSubjects || 'Not Set'}</span>
@@ -2246,18 +2508,23 @@ export const ProfileManagement: React.FC = () => {
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Learning Style</span>
                     <span style={{ fontSize: '14px' }}>{learningStyle || 'Not Set'}</span>
                   </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Projects completed</span>
-                    <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{projects || 'Not Set'}</span>
-                  </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Certifications</span>
-                    <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{certifications || 'Not Set'}</span>
-                  </div>
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Experience</span>
-                    <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{experienceText || 'None registered'}</span>
-                  </div>
+                  
+                  {(educationLevel === 'Diploma' || educationLevel === 'UG' || educationLevel === 'PG') && (
+                    <>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Projects completed</span>
+                        <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{projects || 'Not Set'}</span>
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Certifications</span>
+                        <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{certifications || 'Not Set'}</span>
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Experience</span>
+                        <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{experienceText || 'None registered'}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </Card>
