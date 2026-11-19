@@ -18,22 +18,23 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 const app = express();
 
-// Security HTTP headers
-app.use(helmet());
+// Security HTTP headers with cross-origin resource policy enabled
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
-// Enable CORS
-const clientURL = process.env.CLIENT_URL || 'http://localhost:5173';
+// Enable CORS for client frontends
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, postman) or matching client URLs
-      if (!origin || clientURL === '*' || origin === clientURL || origin.includes('vercel.app') || origin.includes('localhost')) {
-        callback(null, true);
-      } else {
-        callback(null, true); // Fallback allow in production to prevent CORS blocks
-      }
+      // In production and dev, echo the requesting origin to satisfy credentials: true
+      callback(null, origin || true);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
 
