@@ -8,12 +8,14 @@ const PORT = env.PORT;
 let server: Server;
 
 const startServer = async () => {
-  // Connect to database first
-  await connectDB();
-
-  // Start listening
+  // Start HTTP listening immediately so cloud proxies (Render) and health checks succeed immediately
   server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Express server started and listening on port ${PORT} in ${env.NODE_ENV} mode`);
+  });
+
+  // Connect to database in the background with auto-retry
+  connectDB().catch((err) => {
+    console.error('Initial DB connection attempt encountered error:', err);
   });
 
   // Graceful Shutdown Handler

@@ -1,36 +1,45 @@
 import mongoose from 'mongoose';
 import { env } from './env';
 
-export const connectDB = async (): Promise<void> => {
+export const connectDB = async (retries = 30, delayMs = 5000): Promise<void> => {
   const mongoURI = env.MONGODB_URI;
 
-  // Connection Event Handlers
-  mongoose.connection.on('connecting', () => {
-    console.log('Mongoose: Attempting connection to MongoDB Atlas...');
-  });
+  // Connection Event Handlers (register once)
+  if (mongoose.connection.listenerCount('connecting') === 0) {
+    mongoose.connection.on('connecting', () => {
+      console.log('Mongoose: Attempting connection to MongoDB Atlas...');
+    });
 
-  mongoose.connection.on('connected', () => {
-    const dbName = mongoose.connection.db?.databaseName || 'default';
-    console.log(`Mongoose: Database Connected successfully to: ${dbName}`);
-  });
+    mongoose.connection.on('connected', () => {
+      const dbName = mongoose.connection.db?.databaseName || 'default';
+      console.log(`Mongoose: Database Connected successfully to: ${dbName}`);
+    });
 
-  mongoose.connection.on('disconnected', () => {
-    console.warn('Mongoose: Database Connection Disconnected');
-  });
+    mongoose.connection.on('disconnected', () => {
+      console.warn('Mongoose: Database Connection Disconnected');
+    });
 
-  mongoose.connection.on('error', (err) => {
-    console.error('Mongoose: Database Connection Error encountered:');
-    console.error(err);
-  });
+    mongoose.connection.on('error', (err) => {
+      console.error('Mongoose: Database Connection Error encountered:', err);
+    });
+  }
 
   try {
     await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 5000 // 5 seconds fail-fast local timeout
+      serverSelectionTimeoutMS: 5000 // 5 seconds timeout per attempt
     });
-  } catch (error) {
-    console.error('CRITICAL: Initial database connection failed.');
-    console.error(error);
-    process.exit(1);
+  } catch (error: any) {
+    console.warn(`Mongoose: Connection attempt failed: ${error.message}`);
+    if (retries > 0) {
+      console.log(`Mongoose: Retrying database connection in ${delayMs / 1000}s... (${retries} retries remaining)`);
+      setTimeout(() => {
+        connectDB(retries - 1, delayMs).catch((e) => {
+          console.error('Mongoose: Background reconnect failed:', e.message);
+        });
+      }, delayMs);
+    } else {
+      console.warn('Mongoose: Max retries reached. Server continues running; will reconnect when database resumes.');
+    }
   }
 };
 

@@ -68,7 +68,8 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react';
 import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
 
@@ -469,19 +470,35 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    const email = (formData.get('email') as string || '').trim();
+    const password = (formData.get('password') as string || '').trim();
+
+    if (!email || !password) {
+      toast.error('Please enter both email and password.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
 
     try {
       await login({ email, password });
       toast.success('Successfully logged in!');
       navigate('/dashboard');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Login failed. Please verify credentials.');
+      const msg = err.response?.data?.message || err.message || 'Login failed. Please verify credentials.';
+      setErrorMessage(msg);
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -491,9 +508,15 @@ export const Login: React.FC = () => {
       <div style={{ maxWidth: '480px', width: '100%', margin: '80px auto', padding: '0 20px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         <Card style={{ padding: '40px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <h2 style={{ fontSize: '32px', fontWeight: 800, lineHeight: 1.2, margin: '0 0 8px 0', color: 'var(--text-primary)' }}>Welcome Back</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: '0 0 32px 0', lineHeight: 1.5 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: '0 0 24px 0', lineHeight: 1.5 }}>
             Enter credentials to access your career center.
           </p>
+
+          {errorMessage && (
+            <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171', fontSize: '13px', lineHeight: 1.5, marginBottom: '16px' }}>
+              <strong>Notice:</strong> {errorMessage}
+            </div>
+          )}
           
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column' }}>
             <Input id="email" name="email" label="Email Address" type="email" placeholder="you@example.com" required defaultValue="alex.mercer@gmail.com" />
@@ -531,7 +554,30 @@ export const Login: React.FC = () => {
               </span>
             </div>
 
-            <Button type="submit" style={{ width: '100%', height: '48px', fontSize: '15px' }}>Sign In</Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                width: '100%',
+                height: '48px',
+                fontSize: '15px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                opacity: isSubmitting ? 0.7 : 1,
+                cursor: isSubmitting ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="animate-spin" size={18} />
+                  Signing In...
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </Button>
           </form>
 
           <p style={{ textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)', marginTop: '24px', margin: '24px 0 0 0' }}>
@@ -551,22 +597,68 @@ export const Register: React.FC = () => {
   const { register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverNotice, setServerNotice] = useState<string | null>(null);
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const formData = new FormData(e.currentTarget);
-    const fullName = formData.get('fullName') as string;
-    const email = formData.get('email') as string;
-    const mobileNumber = formData.get('mobileNumber') as string;
-    const password = formData.get('password') as string;
-    const confirmPassword = formData.get('confirmPassword') as string;
+    const fullName = (formData.get('fullName') as string || '').trim();
+    const email = (formData.get('email') as string || '').trim();
+    const mobileNumber = (formData.get('mobileNumber') as string || '').trim();
+    const password = (formData.get('password') as string || '').trim();
+    const confirmPassword = (formData.get('confirmPassword') as string || '').trim();
+
+    // Comprehensive client-side validation
+    const newErrors: Record<string, string> = {};
+
+    if (!fullName || fullName.length < 2) {
+      newErrors.fullName = 'Full Name must be at least 2 characters.';
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email address.';
+    }
+
+    if (!mobileNumber || !/^[0-9]{10}$/.test(mobileNumber)) {
+      newErrors.mobileNumber = 'Mobile number must be a valid 10-digit number (e.g. 9876543210).';
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!password || !passwordRegex.test(password)) {
+      newErrors.password = 'Password must be at least 8 characters with 1 uppercase, 1 lowercase, 1 number, and 1 special symbol (@$!%*?&).';
+    }
+
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match.';
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      const firstError = Object.values(newErrors)[0];
+      toast.error(firstError);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setServerNotice(null);
 
     try {
       await register({ fullName, email, mobileNumber, password, confirmPassword });
       toast.success('Account created successfully!');
       navigate('/education');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Registration failed.');
+      const errorMsg = err.response?.data?.message || err.message || 'Registration failed.';
+      toast.error(errorMsg);
+      if (err.response?.status === 503 || errorMsg.toLowerCase().includes('database') || errorMsg.toLowerCase().includes('paused') || errorMsg.toLowerCase().includes('reach backend')) {
+        setServerNotice(errorMsg);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -576,14 +668,47 @@ export const Register: React.FC = () => {
       <div style={{ maxWidth: '480px', width: '100%', margin: '80px auto', padding: '0 20px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         <Card style={{ padding: '40px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <h2 style={{ fontSize: '32px', fontWeight: 800, lineHeight: 1.2, margin: '0 0 8px 0', color: 'var(--text-primary)' }}>Create Account</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: '0 0 32px 0', lineHeight: 1.5 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '15px', margin: '0 0 24px 0', lineHeight: 1.5 }}>
             Get personalized roadmap guidance.
           </p>
 
+          {serverNotice && (
+            <div style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171', fontSize: '13px', lineHeight: 1.5, marginBottom: '16px' }}>
+              <strong>Notice:</strong> {serverNotice}
+            </div>
+          )}
+
           <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column' }}>
-            <Input id="fullName" name="fullName" label="Full Name" type="text" placeholder="John Doe" required />
-            <Input id="email" name="email" label="Email Address" type="email" placeholder="john@example.com" required />
-            <Input id="mobileNumber" name="mobileNumber" label="Mobile Number" type="tel" placeholder="9876543210" required />
+            <Input
+              id="fullName"
+              name="fullName"
+              label="Full Name"
+              type="text"
+              placeholder="John Doe"
+              required
+              error={errors.fullName}
+              onChange={() => errors.fullName && setErrors((prev) => ({ ...prev, fullName: '' }))}
+            />
+            <Input
+              id="email"
+              name="email"
+              label="Email Address"
+              type="email"
+              placeholder="john@example.com"
+              required
+              error={errors.email}
+              onChange={() => errors.email && setErrors((prev) => ({ ...prev, email: '' }))}
+            />
+            <Input
+              id="mobileNumber"
+              name="mobileNumber"
+              label="Mobile Number"
+              type="tel"
+              placeholder="9876543210"
+              required
+              error={errors.mobileNumber}
+              onChange={() => errors.mobileNumber && setErrors((prev) => ({ ...prev, mobileNumber: '' }))}
+            />
             
             <div className="form-group">
               <label htmlFor="password" className="label">Password</label>
@@ -595,7 +720,8 @@ export const Register: React.FC = () => {
                   placeholder="••••••••"
                   required
                   className="input"
-                  style={{ paddingRight: '48px' }}
+                  style={{ paddingRight: '48px', borderColor: errors.password ? '#ef4444' : undefined }}
+                  onChange={() => errors.password && setErrors((prev) => ({ ...prev, password: '' }))}
                 />
                 <button
                   type="button"
@@ -606,6 +732,11 @@ export const Register: React.FC = () => {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {errors.password && (
+                <span style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                  {errors.password}
+                </span>
+              )}
             </div>
 
             <div className="form-group">
@@ -618,7 +749,8 @@ export const Register: React.FC = () => {
                   placeholder="••••••••"
                   required
                   className="input"
-                  style={{ paddingRight: '48px' }}
+                  style={{ paddingRight: '48px', borderColor: errors.confirmPassword ? '#ef4444' : undefined }}
+                  onChange={() => errors.confirmPassword && setErrors((prev) => ({ ...prev, confirmPassword: '' }))}
                 />
                 <button
                   type="button"
@@ -629,9 +761,38 @@ export const Register: React.FC = () => {
                   {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {errors.confirmPassword && (
+                <span style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                  {errors.confirmPassword}
+                </span>
+              )}
             </div>
             
-            <Button type="submit" style={{ width: '100%', height: '48px', fontSize: '15px', marginTop: '12px' }}>Create Account</Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                width: '100%',
+                height: '48px',
+                fontSize: '15px',
+                marginTop: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                opacity: isSubmitting ? 0.7 : 1,
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="animate-spin" size={18} />
+                  Creating Account...
+                </>
+              ) : (
+                'Create Account'
+              )}
+            </Button>
           </form>
 
           <p style={{ textAlign: 'center', fontSize: '14px', color: 'var(--text-secondary)', marginTop: '24px', margin: '24px 0 0 0' }}>

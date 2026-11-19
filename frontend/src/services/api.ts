@@ -8,7 +8,21 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true,
+  timeout: 25000,
 });
+
+// Response interceptor to normalize network errors and timeouts
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ECONNABORTED' || (error.message && error.message.includes('timeout'))) {
+      error.message = 'Backend request timed out. The free backend server or database may be waking up. Please retry in a few seconds.';
+    } else if (!error.response) {
+      error.message = 'Unable to reach backend server. Please ensure the backend and MongoDB database are active.';
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Attach Authorization Bearer token from localStorage if present
 api.interceptors.request.use((config) => {

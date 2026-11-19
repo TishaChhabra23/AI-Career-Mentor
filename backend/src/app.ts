@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import mongoose from 'mongoose';
 import rateLimit from 'express-rate-limit';
 import healthRouter from './routes/health';
 import authRouter from './routes/auth';
@@ -62,6 +63,22 @@ app.use('/api/', limiter);
 
 // Routes
 app.use('/api/v1', healthRouter);
+
+// Database availability guard for API endpoints that require persistent storage
+app.use('/api/v1', (req, res, next) => {
+  // Allow health check and preflight CORS requests regardless of DB state
+  if (req.path === '/health' || req.method === 'OPTIONS') {
+    return next();
+  }
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database is currently paused or connecting. If your MongoDB Atlas cluster was paused, please click Resume in the MongoDB Atlas dashboard and retry in 1-2 minutes.',
+    });
+  }
+  next();
+});
+
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/education', educationRouter);
 app.use('/api/v1/profile', profileRouter);
