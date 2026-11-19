@@ -580,10 +580,25 @@ const seedData = async () => {
   }
 };
 
+export const autoSeedIfEmpty = async (): Promise<void> => {
+  try {
+    const count = await Assessment.countDocuments({ isActive: true });
+    if (count === 0) {
+      console.log('Database has 0 assessments. Automatically initializing seed data...');
+      await seedData();
+      console.log('Auto-seed completed successfully.');
+    }
+  } catch (err: any) {
+    console.error('Auto-seed check/execution encountered error:', err.message);
+  }
+};
+
 const run = async () => {
   await connectDB();
   await seedData();
   await closeDB();
 };
 
-run();
+if (require.main === module) {
+  run();
+}

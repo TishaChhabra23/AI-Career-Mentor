@@ -1,6 +1,7 @@
 import { env } from './config/env';
 import app from './app';
 import { connectDB, closeDB } from './config/db';
+import { autoSeedIfEmpty } from './seed/seedRunner';
 import { Server } from 'http';
 
 const PORT = env.PORT;
@@ -13,10 +14,16 @@ const startServer = async () => {
     console.log(`Express server started and listening on port ${PORT} in ${env.NODE_ENV} mode`);
   });
 
-  // Connect to database in the background with auto-retry
-  connectDB().catch((err) => {
-    console.error('Initial DB connection attempt encountered error:', err);
-  });
+  // Connect to database in the background with auto-retry and auto-seed
+  connectDB()
+    .then(() => {
+      autoSeedIfEmpty().catch((err) => {
+        console.error('Auto-seed initialization encountered error:', err.message);
+      });
+    })
+    .catch((err) => {
+      console.error('Initial DB connection attempt encountered error:', err);
+    });
 
   // Graceful Shutdown Handler
   const shutdown = async (signal: string) => {
